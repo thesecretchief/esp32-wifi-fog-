@@ -18,6 +18,74 @@ Modern WiFi can detect and track human movement using nothing but radio wave ref
 - Supports ESP32-S3, ESP32-C6, ESP32-C3 and most other variants
 - 100% local, open-source, no cloud, no tracking
 
+### Installation
+
+#### Hardware Needed (total cost ~$7–12)
+- Any ESP32 board (ESP32-S3, ESP32-C6, or ESP32-C3 recommended — best WiFi performance)
+- USB cable for flashing + power (any 5V USB charger works for 24/7 use)
+- Optional: small 3D-printed case or just leave it plugged in near your router
+
+#### Option 1: ESPHome (Recommended — easiest, 10 minutes, perfect for Home Assistant users)
+
+1. Open ESPHome in Home Assistant (or the standalone ESPHome dashboard).
+2. Click **+ New Device** → give it name `wifi-fog` → choose your ESP32 board.
+3. Replace the entire generated YAML with the code below.
+4. Click **Install** → plug in your ESP32 (hold BOOT button if it asks).
+5. Plug the board near your main router and watch the fog begin!
+
+**wifi-fog.yaml** (copy-paste)
+```yaml
+esphome:
+  name: wifi-fog
+  friendly_name: WiFi Fog Machine
+
+esp32:
+  board: esp32-s3-devkitc-1   # ← CHANGE to match your board (esp32-c6-devkitc-1, etc.)
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+logger:
+  level: WARN
+
+web_server:
+  port: 80   # optional — view status in browser at the device IP
+
+# ================== NOISE GENERATION ==================
+interval:
+  # Frequent light requests (core fog)
+  - interval: 450ms
+    then:
+      - http_request.get:
+          url: "http://1.1.1.1"
+          useragent: "ESP32-WiFiFog/1.0"
+      - delay: 150ms
+
+  # Occasional varied requests (harder for sensing algorithms to filter)
+  - interval: 2s
+    then:
+      - http_request.get:
+          url: "https://www.cloudflare.com/cdn-cgi/trace"
+          useragent: "ESP32-WiFiFog/1.0"
+
+  - interval: 5s
+    then:
+      - http_request.get:
+          url: "http://connectivitycheck.gstatic.com/generate_204"
+          useragent: "ESP32-WiFiFog/1.0"
+
+# Switch to turn fog on/off from Home Assistant
+switch:
+  - platform: template
+    name: "WiFi Fog"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      - logger.log: "🌫️ Fog machine ON"
+    turn_off_action:
+      - logger.log: "🌫️ Fog machine OFF"
+
 ### Quick Start
 1. Flash the firmware (ESPHome or Arduino)
 2. Plug it in near your router
